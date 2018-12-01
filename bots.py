@@ -3,24 +3,82 @@
 import numpy as np
 from tronproblem import *
 from trontypes import CellType, PowerupType
+import adversarialsearch_tron as a_search
 import random, math
-from queue import Queue
 
 # Throughout this file, ASP means adversarial search problem.
 
-
 class StudentBot:
-    """ Write your student bot here"""
+    def __init__(self):
+        order = ["U", "D", "L", "R"]
+        random.shuffle(order)
+        self.order = order
+
+    def cleanup(self):
+        order = ["U", "D", "L", "R"]
+        random.shuffle(order)
+        self.order = order
 
     def decide(self, asp):
         """
         Input: asp, a TronProblem
         Output: A direction in {'U','D','L','R'}
-
-        To get started, you can get the current
-        state by calling asp.get_start_state()
         """
-        return "U"
+        state = asp.get_start_state()
+        locs = state.player_locs
+        board = state.board
+        ptm = state.ptm
+        loc = locs[ptm]
+        possibilities = list(TronProblem.get_safe_actions(board, loc))
+        if not possibilities:
+            return "U"
+        decision = possibilities[0]
+        for move in self.order:
+            if move not in possibilities:
+                continue
+            next_loc = TronProblem.move(loc, move)
+            """
+            The way WallBot decides on next moves is if the length of the safe
+            actions is less than 3 (meaning it will do dumb things sometimes
+            like run into walls where safe_actions == 0).
+            """
+            if len(TronProblem.get_safe_actions(board, next_loc)) < 3:
+                decision = move
+                break
+        return decision
+
+
+class AlphaBetaBot:
+    """ Write your student bot here"""
+    def __init__(self):
+        self.prediction_depth = 5
+
+    def decide(self, asp):
+        """
+        Input: asp, a TronProblem
+        Output: A direction in {'U','D','L','R'}
+        """
+        state = asp.get_start_state()
+        locs = state.player_locs
+        board = state.board
+        ptm = state.ptm
+        loc = locs[ptm]
+        possibilities = list(TronProblem.get_safe_actions(board, loc))
+
+        # Defeat.
+        if not possibilities:
+            return "U"
+        # Choosing the next action with ab-pruning minimax.
+        decision = a_search.alpha_beta_cutoff(asp, self.prediction_depth, self.eval_func)
+
+        for move in self.order:
+            if move not in possibilities:
+                continue
+            next_loc = TronProblem.move(loc, move)
+            if len(TronProblem.get_safe_actions(board, next_loc)) < 3:
+                decision = move
+                break
+        return decision
 
     def cleanup(self):
         """
@@ -34,12 +92,13 @@ class StudentBot:
         turns_elapsed counter to zero). If you don't need it,
         feel free to leave it as "pass"
         """
-        pass
+        order = ["U", "D", "L", "R"]
+        random.shuffle(order)
+        self.order = order
 
-    def heuristic(self, state):
+    def eval_func(self, state):
         locPlayer = state.player_locs[state.ptm]
         locOpp = state.player_locs[math.abs(state.ptm - 1)]
-        board = state.board
         playerSpaces = open_spaces(locPlayer, state)
         oppSpaces = open_spaces(oppPlayer, state)
         return playerSpaces - oppSpaces
@@ -62,10 +121,7 @@ class StudentBot:
                 if not next_loc in visited:
                     q.put(next_loc)
                     num_spaces += 1
-
         return num_spaces
-
-
 
 
 class RandBot:
@@ -80,9 +136,7 @@ class RandBot:
         locs = state.player_locs
         board = state.board
         ptm = state.ptm
-        print("ptm:", ptm)
         loc = locs[ptm]
-        print("loc:", loc)
         possibilities = list(TronProblem.get_safe_actions(board, loc))
         if possibilities:
             return random.choice(possibilities)
@@ -113,7 +167,6 @@ class WallBot:
         state = asp.get_start_state()
         locs = state.player_locs
         board = state.board
-        print("board:", board)
         ptm = state.ptm
         loc = locs[ptm]
         possibilities = list(TronProblem.get_safe_actions(board, loc))
@@ -124,6 +177,11 @@ class WallBot:
             if move not in possibilities:
                 continue
             next_loc = TronProblem.move(loc, move)
+            """
+            The way WallBot decides on next moves is if the length of the safe
+            actions is less than 3 (meaning it will do dumb things sometimes
+            like run into walls where safe_actions == 0).
+            """
             if len(TronProblem.get_safe_actions(board, next_loc)) < 3:
                 decision = move
                 break
