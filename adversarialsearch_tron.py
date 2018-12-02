@@ -6,6 +6,7 @@ def minimax(asp):
     """
 	Implement the minimax algorithm on ASPs,
 	assuming that the given game is both 2-player and constant-sum
+
 	Input: asp - an AdversarialSearchProblem
 	Output: an action(an element of asp.get_available_actions(asp.get_start_state()))
 	"""
@@ -45,6 +46,7 @@ def alpha_beta(asp):
     """
 	Implement the alpha-beta pruning algorithm on ASPs,
 	assuming that the given game is both 2-player and constant-sum.
+
 	Input: asp - an AdversarialSearchProblem
 	Output: an action(an element of asp.get_available_actions(asp.get_start_state()))
 	"""
@@ -85,6 +87,7 @@ def alpha_beta_cutoff(asp, cutoff_ply, eval_func):
 	This function should:
 	- search through the asp using alpha-beta pruning
 	- cut off the search after cutoff_ply moves have been made.
+
 	Inputs:
 		asp - an AdversarialSearchProblem
 		cutoff_ply- an Integer that determines when to cutoff the search
@@ -101,16 +104,17 @@ def alpha_beta_cutoff(asp, cutoff_ply, eval_func):
 			You do not need to implement this function, as it should be provided by
 			whomever is calling alpha_beta_cutoff, however you are welcome to write
 			evaluation functions to test your implemention
+
 	Output: an action(an element of asp.get_available_actions(asp.get_start_state()))
 	"""
     alpha = -sys.maxsize - 1
     beta = sys.maxsize
     choice = None
     # First 'max' call.
-    for action in asp.get_safe_actions(asp.get_start_state()):
-        v = min_value_ab_cutoff(asp, asp.transition(asp.get_start_state(), action),
-                            asp.get_start_state().player_to_move(), alpha, beta,
-                        cutoff_ply - 1, eval_func)
+    first_state = asp.get_start_state()
+    for action in list(asp.get_safe_actions(first_state.board, first_state.player_locs[first_state.ptm])):
+        v = min_value_ab_cutoff(asp, asp.transition(first_state, action),
+            first_state.ptm, alpha, beta, cutoff_ply - 1, eval_func)
         if v > alpha:
             alpha = v
             choice = action
@@ -121,7 +125,7 @@ def max_value_ab_cutoff(asp, state, player, alpha, beta, cutoff_ply, eval_func):
         return eval_func(state)
     if asp.is_terminal_state(state):
         return asp.evaluate_state(state)[player]
-    for action in asp.get_available_actions(state):
+    for action in list(asp.get_safe_actions(state.board, state.player_locs[state.ptm])):
         next_state = asp.transition(state, action)
         alpha = max(alpha, min_value_ab_cutoff(asp, next_state, player, alpha, beta, cutoff_ply - 1, eval_func))
         if beta <= alpha:
@@ -133,7 +137,7 @@ def min_value_ab_cutoff(asp, state, player, alpha, beta, cutoff_ply, eval_func):
         return eval_func(state)
     if asp.is_terminal_state(state):
         return asp.evaluate_state(state)[player]
-    for action in asp.get_available_actions(state):
+    for action in list(asp.get_safe_actions(state.board, state.player_locs[state.ptm])):
         next_state = asp.transition(state, action)
         beta = min(beta, max_value_ab_cutoff(asp, next_state, player, alpha, beta, cutoff_ply - 1, eval_func))
         if beta <= alpha:
@@ -146,6 +150,7 @@ def general_minimax(asp):
 	Implement the generalization of the minimax algorithm that was
 	discussed in the handout, making no assumptions about the
 	number of players or reward structure of the given game.
+
 	Input: asp - an AdversarialSearchProblem
 	Output: an action(an element of asp.get_available_actions(asp.get_start_state()))
 	"""
@@ -185,4 +190,4 @@ def gen_min_value(asp, state, player):
             new_val = min(value, gen_min_value(asp, next_state, player))
         if new_val < value:
             value = new_val
-return value
+    return value
