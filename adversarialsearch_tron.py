@@ -34,7 +34,7 @@ def alpha_beta_cutoff_fabrice(asp, cutoff_ply, eval_func):
             # if armor
             # get extra actions
             #
-            
+
             availActions = list(asp.get_armor_safe_actions(curState, curState.player_locs[curState.ptm]))
             for action in availActions:
                 nextState = asp.transition(curState, action)
@@ -63,8 +63,10 @@ def alpha_beta_cutoff_fabrice(asp, cutoff_ply, eval_func):
     elif(curState.player_to_move() == maximizingPlayer):
         availActions = list(asp.get_armor_safe_actions(curState, curState.player_locs[curState.ptm]))
         for action in availActions:
+            print("evaluated action: ", action)
             nextState = asp.transition(curState, action)
             newAlpha = abCutHelper(nextState, alpha, beta, maximizingPlayer, cutoff_ply -1)
+            print("min value: ", newAlpha)
             if alpha < newAlpha:
                 bestAction = action
                 alpha = newAlpha
@@ -92,7 +94,7 @@ def alpha_beta_cutoff(asp, cutoff_ply, eval_func):
     choice = None
     # First 'max' call.
     first_state = asp.get_start_state()
-    for action in list(asp.get_safe_actions(first_state.board, first_state.player_locs[first_state.ptm])):
+    for action in list(asp.get_armor_safe_actions(first_state, first_state.player_locs[first_state.ptm])):
         # print("evaluated action: ", action)
         v = min_value_ab_cutoff(asp, asp.transition(first_state, action),
             first_state.ptm, alpha, beta, cutoff_ply - 1, eval_func)
@@ -100,6 +102,9 @@ def alpha_beta_cutoff(asp, cutoff_ply, eval_func):
         if v > alpha:
             alpha = v
             choice = action
+        # if beta <= alpha:
+        #     print("best ab action: ", )
+        #     return action
     # print("alpha: ", alpha)
     # print("choice: ", choice)
     return choice
@@ -109,9 +114,9 @@ def max_value_ab_cutoff(asp, state, player, alpha, beta, cutoff_ply, eval_func):
         # print("this should be player 1:", state.ptm)
         return eval_func(state)
     if asp.is_terminal_state(state):
-        print("terminal state")
+        # print("terminal state")
         return eval_func(state)
-    for action in list(asp.get_safe_actions(state.board, state.player_locs[state.ptm])):
+    for action in list(asp.get_armor_safe_actions(state, state.player_locs[state.ptm])):
         next_state = asp.transition(state, action)
         alpha = max(alpha, min_value_ab_cutoff(asp, next_state, player, alpha, beta, cutoff_ply - 1, eval_func))
         if beta <= alpha:
@@ -123,9 +128,9 @@ def min_value_ab_cutoff(asp, state, player, alpha, beta, cutoff_ply, eval_func):
         # print("this should be player 1:", state.ptm)
         return eval_func(state)
     if asp.is_terminal_state(state):
-        print("terminal state")
+        # print("terminal state")
         return eval_func(state)
-    for action in list(asp.get_safe_actions(state.board, state.player_locs[state.ptm])):
+    for action in list(asp.get_armor_safe_actions(state, state.player_locs[state.ptm])):
         next_state = asp.transition(state, action)
         beta = min(beta, max_value_ab_cutoff(asp, next_state, player, alpha, beta, cutoff_ply - 1, eval_func))
         if beta <= alpha:
@@ -171,10 +176,10 @@ def astar(problem, heur):
     ignore = {}
     visited = set()
 
-    while not frontier.empty() and frontier.qsize() < 50:
+    while not frontier.empty() and frontier.qsize() < 500:
         current = frontier.get()[1]
         visited.add(current)
-        # print(problem.board_to_pretty_string(current))
+        # print("qsize: ", frontier.qsize())
 
         if(is_goal_state(current)):
             return True

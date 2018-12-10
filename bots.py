@@ -6,114 +6,17 @@ from trontypes import CellType, PowerupType
 import adversarialsearch_tron as a_search
 import random, math, queue
 
-# Throughout this file, ASP means adversarial search problem.
 
 class StudentBot:
     """ Write your student bot here"""
     def __init__(self):
         self.prediction_depth = 5
-        self.hunt_down_distance = 5
-        self.initial_state = True
-        self.whoami = None
-
-    def decide(self, asp):
-        """
-        Input: asp, a TronProblem
-        Output: A direction in {'U','D','L','R'}
-        """
-        state = asp.get_start_state()
-        locs = state.player_locs
-        board = state.board
-        ptm = state.ptm
-        loc = locs[ptm]
-
-        other_loc = locs[abs(ptm-1)]
-        possibilities = list(TronProblem.get_safe_actions(board, loc))
-        # Defeat.
-        if not possibilities:
-            return "U"
-
-        # # have different path finding if opponent is unreachable:
-        # if self.unreachable(loc, other_loc, state):
-        #     decision = a_search.maximize_white_space(asp)
-        #
-        # # choose next move in initial state
-        # if self.initial_state:
-        #     print("WE ARE IN INITIAL STATE!!!!!", self.estimated_distance(loc, other_loc))
-        # if (self.estimated_distance(loc, other_loc) < self.hunt_down_distance) and self.initial_state:
-        #     print("WE ARE IN INITIAL STATE!!!!! pt. 2: ", self.estimated_distance(loc, other_loc))
-        #     decision = self.hunt_down(loc, other_loc)
-        # else:
-        #     self.initial_state = False
-
-        # default: Choosing the next action with ab-pruning minimax.
-        self.whoami = ptm
-        decision = a_search.alpha_beta_cutoff(asp, self.prediction_depth, self.eval_func)
-        # print("CURRENT STATE")
-        # print(self.eval_func(state))
-        return decision
-
-    def cleanup(self):
-        """
-        Input: None
-        Output: None
-
-        This function will be called in between
-        games during grading. You can use it
-        to reset any variables your bot uses during the game
-        (for example, you could use this function to reset a
-        turns_elapsed counter to zero). If you don't need it,
-        feel free to leave it as "pass"
-        """
-        order = ["U", "D", "L", "R"]
-        random.shuffle(order)
-        self.order = order
-
-
-    def eval_func(self, state):
-        # print("player index: ", state.ptm)
-        locPlayer = state.player_locs[self.whoami]
-        locOpp = state.player_locs[abs(self.whoami - 1)]
-        board = state.board
-        playerSpaces = self.open_spaces(locPlayer, state)
-        # print("player spaces: ", playerSpaces)
-        oppSpaces = self.open_spaces(locOpp, state)
-        # print("opp spaces: ", oppSpaces)
-        return playerSpaces - oppSpaces
-
-    def open_spaces(self, loc, state):
-        # doesn't take into account that going one way shuts off all the other ways...
-        # like some moves are mutually exclusive
-        visited = set()
-        q = queue.Queue()
-        num_spaces = 0
-        # print("loc:", loc)
-        for move in list(TronProblem.get_safe_actions(state.board, loc)):
-            next_loc = TronProblem.move(loc, move)
-            # print("next loc:", next_loc)
-            q.put(next_loc)
-            visited.add(next_loc)
-            num_spaces += 1
-        while not q.empty():
-            new_loc = q.get()
-            # print("new loc:", new_loc)
-            for move in list(TronProblem.get_safe_actions(state.board, new_loc)):
-                next_loc = TronProblem.move(new_loc, move)
-                if (not next_loc in visited):
-                    q.put(next_loc)
-                    visited.add(next_loc)
-                    num_spaces += 1
-        return num_spaces
-
-
-class CloudBot:
-    """ Write your student bot here"""
-    def __init__(self):
-        self.prediction_depth = 4
-        self.hunt_down_distance = 8
+        self.hunt_down_distance = 6
         self.whoami = None
         self.initial_state = True
         self.attack_weight = 1
+        self.uncreachable_flag = True
+        self.BOT_NAME = "Sionnest-Oyekaᵀᴹ"
 
     def decide(self, asp):
         """
@@ -133,11 +36,16 @@ class CloudBot:
         if not possibilities:
             print("decided there were no possibilities available")
             return "U"
+        if len(possibilities) == 1:
+            return possibilities[0]
 
         if self.initial_state:
-            # print("unreachable search start")
-            if not self.reachable(asp):
-                self.initial_state = False
+            if self.uncreachable_flag:
+                # print("unreachable search start")
+                if not self.reachable(asp):
+                    print("unreachable")
+                    self.initial_state = False
+            self.uncreachable_flag = False
             # print("unreachable search end")
         if self.initial_state:
             current_distance = self.estimated_distance(loc, other_loc)
@@ -145,20 +53,20 @@ class CloudBot:
             if (current_distance > self.hunt_down_distance):
                 # print("hunt down pt. 1")
                 decision = self.hunt_down(possibilities, loc, other_loc)
-                print("hunt down decision:", decision)
+                # print("hunt down decision:", decision)
                 if  decision == None:
                     self.initial_state = False
                 else:
-                    print("chose1:", decision)
+                    # print("chose1:", decision)
                     return decision
             else:
                 self.initial_state = False
-        print("armor safe actions 1:", possibilities)
-        print("armor safe actions:", asp.get_armor_safe_actions(state, loc))
-        
-        decision = a_search.alpha_beta_cutoff_fabrice(asp, self.prediction_depth, self.eval_func)
+        # print("armor safe actions 1:", possibilities)
+        # print("armor safe actions:", asp.get_armor_safe_actions(state, loc))
+
+        decision = a_search.alpha_beta_cutoff(asp, self.prediction_depth, self.sionnest_oyeka)
         # decision = a_search.alpha_beta_cutoff(asp, self.prediction_depth, self.eval_func)
-        print("chose2:", decision)
+        # print("chose2:", decision)
         return decision
 
     def reachable(self, asp):
@@ -182,6 +90,7 @@ class CloudBot:
         self.order = order
         self.whoami = None
         self.initial_state = True
+        self.uncreachable_flag = True
 
     def estimated_distance(self, loc1, loc2):
         return (abs(loc1[0] - loc2[0])) + (abs(loc1[1] - loc2[1]))
@@ -189,8 +98,8 @@ class CloudBot:
     def hunt_down(self, possibilities, loc1, loc2):
         horiz_diff = loc1[1] - loc2[1]
         vertical_diff = loc1[0] - loc2[0]
-        # print("vert:", abs(vertical_diff))
-        # print("horiz:", abas(horiz_diff))
+        # print("vert:", vertical_diff)
+        # print("horiz:", horiz_diff)
         if abs(vertical_diff) > abs(horiz_diff):
             if vertical_diff > 0:
                 if "U" in possibilities:
@@ -198,6 +107,12 @@ class CloudBot:
             else:
                 if "D" in possibilities:
                     return "D"
+            if horiz_diff < 0:
+                if "R" in possibilities:
+                    return "R"
+            else:
+                if "L" in possibilities:
+                    return "L"
         else:
             if horiz_diff < 0:
                 if "R" in possibilities:
@@ -205,7 +120,58 @@ class CloudBot:
             else:
                 if "L" in possibilities:
                     return "L"
-        return None
+            if vertical_diff > 0:
+                if "U" in possibilities:
+                    return "U"
+            else:
+                if "D" in possibilities:
+                    return "D"
+        return possibilities[0]
+        # return None
+
+    def sionnest_oyeka(self, state):
+        loc = state.player_locs[self.whoami]
+        if loc == None:
+            return -9999999
+        opp_loc = state.player_locs[abs(self.whoami - 1)]
+        if opp_loc == None:
+            return 9999999
+        board = state.board
+
+        veroinoi1 = 0
+        veroinoi2 = 0
+        visited = set()
+        q = queue.Queue()
+        opp_q = queue.Queue()
+        # print("loc:", loc)
+        for move in list(TronProblem.get_safe_actions(state.board, loc)):
+            next_loc = TronProblem.move(loc, move)
+            q.put(next_loc)
+            visited.add(next_loc)
+            veroinoi1 += 1
+        for move in list(TronProblem.get_safe_actions(state.board, opp_loc)):
+            next_loc = TronProblem.move(opp_loc, move)
+            opp_q.put(next_loc)
+            visited.add(next_loc)
+            veroinoi2 += 1
+        while not q.empty() or not opp_q.empty():
+            if not q.empty():
+                new_loc = q.get()
+                for move in list(TronProblem.get_safe_actions(state.board, new_loc)):
+                    next_loc = TronProblem.move(new_loc, move)
+                    if next_loc not in visited:
+                        veroinoi1 += 1
+                        q.put(next_loc)
+                        visited.add(next_loc)
+            if not opp_q.empty():
+                new_loc = opp_q.get()
+                for move in list(TronProblem.get_safe_actions(state.board, new_loc)):
+                    next_loc = TronProblem.move(new_loc, move)
+                    if next_loc not in visited:
+                        veroinoi2 += 1
+                        opp_q.put(next_loc)
+                        visited.add(next_loc)
+        return veroinoi1 - (self.attack_weight * veroinoi2)
 
     def eval_func(self, state):
         # print("player index: ", state.ptm)
