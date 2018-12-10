@@ -24,6 +24,7 @@ def run_game(asp, bots, visualizer=None, delay=0.2, max_wait=0.3, colored=True):
         time.sleep(delay)
 
     while not (asp.is_terminal_state(state)):
+    # for i in range(25):
         exposed = copy.deepcopy(asp)
         signal.signal(signal.SIGALRM, support.timeout_handler)
         signal.setitimer(signal.ITIMER_REAL, max_wait)
@@ -31,12 +32,12 @@ def run_game(asp, bots, visualizer=None, delay=0.2, max_wait=0.3, colored=True):
             # run AI
             decision = bots[state.ptm].decide(exposed)
         except support.TimeoutException as msg:
-            if visualizer:
-                print(
-                    """Warning. Player %s took too long to decide on a move.
+            # if visualizer:
+            print(
+                """Warning. Player %s took too long to decide on a move.
 They will go UP this round."""
-                    % (state.ptm + 1)
-                )
+                % (state.ptm + 1)
+            )
             decision = "U"
         signal.setitimer(signal.ITIMER_REAL, 0)
 

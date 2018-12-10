@@ -15,6 +15,8 @@ def determine_bot_functions(bot_names):
     for name in bot_names:
         if name == "student":
             bot_list.append(bots.StudentBot())
+        elif name == "cloud":
+            bot_list.append(bots.CloudBot())
         elif name == "ab":
             bot_list.append(bots.AlphaBetaBot())
         elif name == "random":

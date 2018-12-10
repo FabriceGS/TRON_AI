@@ -23,6 +23,9 @@ class TronState(GameState):
         self.ptm = ptm
         self.player_powerups = player_powerups
 
+    def __lt__(self, other):
+        return True
+
     def player_to_move(self):
         return self.ptm
 
@@ -177,6 +180,91 @@ class TronProblem(AdversarialSearchProblem):
         # return the next state
         return TronState(board, player_locs, next_ptm, player_powerups)
 
+    def transition_astar(self, state, action):
+        assert not (self.is_terminal_state(state))
+        assert action in self.get_available_actions(state)
+
+        # prepare parts of result state
+        board = [[elt for elt in row] for row in state.board]
+        player_locs = [loc for loc in state.player_locs]
+        next_ptm = (state.ptm + 1) % self._num_players
+        player_powerups = copy.deepcopy(state.player_powerups)
+        while player_locs[next_ptm] == None:
+            next_ptm = (next_ptm + 1) % self._num_players
+        # note that, given the assumption that state is non-terminal,
+        # there will be at least 2 players still on the board when
+        # going through this loop.
+
+        # get original position of player to move before transitioning
+        r0, c0 = state.player_locs[state.ptm]
+
+        # lay down a barrier where the player was before
+        board[r0][c0] = CellType.BARRIER
+
+        # get target location after moving
+        r1, c1 = TronProblem.move((r0, c0), action)
+
+        # resolve move based on the cell that the player tried to move to
+        cell = state.board[r1][c1]
+        if cell == CellType.SPACE:  # move to empty space
+            TronProblem._move_player_and_update(board, state, player_locs, r1, c1)
+
+        elif cell == CellType.TRAP:  # move to trap powerup
+            TronProblem._move_player_and_update(board, state, player_locs, r1, c1)
+
+            # place barriers in front of next player
+            board = TronProblem._add_barriers(board, player_locs[next_ptm])
+
+        elif cell == CellType.BOMB:  # move to bomb powerup
+            TronProblem._move_player_and_update(board, state, player_locs, r1, c1)
+
+            # remove barriers around current player
+            board = TronProblem._remove_barriers(board, player_locs[state.ptm])
+
+        elif cell == CellType.ARMOR:  # move to armor powerup
+            # fill new space with player symbols and update
+            TronProblem._move_player_and_update(board, state, player_locs, r1, c1)
+
+            # give current player armor powerup
+            TronProblem._add_powerup(
+                state.ptm, player_powerups, PowerupType.ARMOR, 1
+            )
+
+        elif cell == CellType.SPEED:  # move to speed powerup
+            TronProblem._move_player_and_update(board, state, player_locs, r1, c1)
+
+            # give current player speed powerup
+            TronProblem._add_powerup(
+                state.ptm, player_powerups, PowerupType.SPEED, SPEED_BOOST
+            )
+
+        else:  # player chose to move into an occupied space.
+            # if they have armor and the space is a barrier,
+            # move normally into the space and remove the armor
+            if state.player_has_armor(state.ptm) and cell == CellType.BARRIER:
+                TronProblem._move_player_and_update(board, state, player_locs, r1, c1)
+
+                player_powerups[state.ptm].pop(
+                    PowerupType.ARMOR, None
+                )  # remove armor
+            else:
+                # otherwise, they crashed so they are removed from the game
+                player_locs[state.ptm] = None
+
+        # if the player has the speed powerup, set the player-to-move
+        # of the next state to be the current player-to-move and decrement
+        # the speed counter
+        if state.get_remaining_turns_speed(state.ptm) > 0:
+            if (player_powerups[state.ptm])[PowerupType.SPEED] <= 1:
+                player_powerups[state.ptm].pop(PowerupType.SPEED, None)
+            else:
+                (player_powerups[state.ptm])[PowerupType.SPEED] -= 1
+            # return state with the same player moving as current turn
+            return TronState(board, player_locs, state.ptm, player_powerups)
+
+        # return the next state
+        return TronState(board, player_locs, state.ptm, player_powerups)
+
     def is_terminal_state(self, state):
         num_players_left = 0
         for pl in state.player_locs:
@@ -308,6 +396,7 @@ class TronProblem(AdversarialSearchProblem):
         loc will be a (<row>, <column>) double, and direction will be
         U, L, D, or R.
         """
+        # print(loc)
         r0, c0 = loc
         if direction == U:
             return (r0 - 1, c0)
@@ -334,6 +423,34 @@ class TronProblem(AdversarialSearchProblem):
         """
         r, c = loc
         return board[r][c].isdigit()
+
+    @staticmethod
+    def get_armor_safe_actions(state, loc):
+        """
+        Given a game board and a location on that board,
+        returns the set of actions that don't result in immediate collisions.
+        Input:
+            board- a list of lists of characters representing cells
+            loc- location (<row>, <column>) to find safe actions from
+        Output:
+            returns the set of actions that don't result in immediate collisions.
+            An immediate collision occurs when you run into a barrier, wall, or
+            the other player
+        """
+        safe = set()
+        board = state.board
+        player = state.ptm
+        for action in {U, D, L, R}:
+            r1, c1 = TronProblem.move(loc, action)
+            if not (
+                board[r1][c1] == CellType.BARRIER
+                or board[r1][c1] == CellType.WALL
+                or TronProblem.is_cell_player(board, (r1, c1))
+            ):
+                safe.add(action)
+            if (state.player_has_armor(player)) and (board[r1][c1] == CellType.BARRIER):
+                safe.add(action)
+        return safe
 
     @staticmethod
     def get_safe_actions(board, loc):
